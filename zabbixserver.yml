@@ -1,0 +1,142 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: zabbixserver
+  labels:
+    app: zabbixserver
+spec:
+  ports:
+  - name: tcp-10051
+    protocol: TCP
+    port: 10051
+    targetPort: 10051
+  selector:
+    app: zabbixserver
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: zabbixweb
+  labels:
+    app: zabbixweb
+spec:
+  type: LoadBalancer
+  ports:
+  - name: tcp-80
+    protocol: TCP
+    port: 80
+    targetPort: 80
+  selector:
+    app: zabbixweb
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  ports:
+  - name: tcp-3306
+    protocol: TCP
+    port: 3306
+    targetPort: 3306
+  selector:
+    app: mysql
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: mysql
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:5.5
+        resources:
+          requests:
+            cpu: 0.1
+            memory: 100Mi
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_DATABASE
+          value: zabbix
+        - name: MYSQL_USER
+          value: zabbix
+        - name: MYSQL_PASSWORD
+          value: zabbix
+        - name: MYSQL_ROOT_PASSWORD
+          value: zabbix
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: zabbixserver
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: zabbixserver
+    spec:
+      containers:
+      - name: zabbixserver
+        image: zabbix/zabbix-server-mysql:alpine-3.4.4
+        resources:
+          requests:
+            cpu: 0.1
+            memory: 100Mi
+        ports:
+        - containerPort: 10051
+        env:
+        - name: DB_SERVER_HOST
+          value: mysql
+        - name: MYSQL_DATABASE
+          value: zabbix
+        - name: MYSQL_USER
+          value: zabbix
+        - name: MYSQL_PASSWORD
+          value: zabbix
+        - name: MYSQL_ROOT_PASSWORD
+          value: zabbix
+---
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: zabbixweb
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: zabbixweb
+    spec:
+      containers:
+      - name: zabbixweb
+        image: zabbix/zabbix-web-nginx-mysql:alpine-3.4.4
+        resources:
+          requests:
+            cpu: 0.1
+            memory: 100Mi
+        ports:
+        - containerPort: 80
+        env:
+        - name: ZBX_SERVER_HOST
+          value: zabbixserver
+        - name: DB_SERVER_HOST
+          value: mysql
+        - name: MYSQL_DATABASE
+          value: zabbix
+        - name: MYSQL_USER
+          value: zabbix
+        - name: MYSQL_PASSWORD
+          value: zabbix
+        - name: MYSQL_ROOT_PASSWORD
+          value: zabbix
